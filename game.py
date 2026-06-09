@@ -202,8 +202,6 @@ def load_background(path):
     return cv2.resize(bg_bgr, (GAME_WIDTH, GAME_HEIGHT))
 
 
-# ===================== GAME OBJECTS =====================
-
 class Planet:
     def __init__(self, sprite_list, explode_sprite):
         self.sprite_list    = sprite_list
@@ -301,9 +299,6 @@ class FloatingText:
     def dead(self):
         return self.age >= self.lifetime
 
-
-# ===================== GAME STATE =====================
-
 class GameState:
     def __init__(self, sprites, planet_sprites, alien_sprite,
                  explode_sprite, background):
@@ -312,13 +307,11 @@ class GameState:
         self.alien_sprite   = alien_sprite
         self.explode_sprite = explode_sprite
         self.background     = background
-        # Hitung lebar karakter sebenarnya dari sprite
         self.char_w         = self.sprites["stay"].shape[1]
         self.reset()
 
     def reset(self):
         char_h                    = self.sprites["stay"].shape[0]
-        # Spawn di tengah, dipastikan tidak melebihi batas kanan
         self.x                    = float(max(0, min(GAME_WIDTH // 2 - self.char_w // 2,
                                                       GAME_WIDTH - self.char_w)))
         self.y                    = float(GROUND_Y - char_h)
@@ -351,7 +344,6 @@ class GameState:
             self.x        -= WALK_SPEED
             self.direction = "left"
 
-        # Clamp karakter agar tidak keluar window (0 s.d. GAME_WIDTH - lebar karakter)
         self.x = max(0.0, min(self.x, float(GAME_WIDTH - self.char_w)))
 
         if right_fingers in (1, 2, 3) and not self.is_jumping:
@@ -435,13 +427,11 @@ class GameState:
         overlay_sprite(frame, self.sprites[self.direction], int(self.x), int(self.y))
         for ft in self.float_texts: ft.draw(frame)
 
-        # HUD: hati
         for i in range(5):
             color = (0, 0, 220) if i < self.hearts else (100, 100, 100)
             cv2.circle(frame, (30 + i * 32, 30), 12, color, -1)
             cv2.circle(frame, (30 + i * 32, 30), 12, (200, 200, 200), 1)
 
-        # HUD: skor
         score_text = f"SCORE: {self.score}"
         (tw, _), _ = cv2.getTextSize(score_text, cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)
         cv2.putText(frame, score_text, (GAME_WIDTH - tw - 15, 35),
@@ -471,8 +461,6 @@ class GameState:
         return frame
 
 
-# ===================== LAYOUT BUILDER =====================
-
 def build_combined_display(game_frame, cam_view, mask_bgr):
     panel_h      = GAME_HEIGHT
     cam_panel_h  = panel_h // 2
@@ -491,8 +479,6 @@ def build_combined_display(game_frame, cam_view, mask_bgr):
     right_panel = np.vstack([cam_small, mask_small])
     return np.hstack([game_frame, right_panel])
 
-
-# ===================== MAIN =====================
 
 def main():
     print("=== Astro-Dev Game ===")
