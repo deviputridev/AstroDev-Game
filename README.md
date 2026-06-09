@@ -2,6 +2,7 @@
 
 **Laporan Teknis dan Pedoman Penggunaan**
 
+| Identitas | Keterangan |
 |---|---|
 | **Nama** | Devi Putri Sekar Arum |
 | **NRP** | 5024241049 |
