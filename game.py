@@ -86,11 +86,9 @@ def overlay_sprite(frame, sprite, x, y):
 
 
 def manual_erode(binary_img, kernel_size=5):
-    
     pad = kernel_size // 2
     padded = np.pad(binary_img, pad, mode='constant', constant_values=0)
     output = np.zeros_like(binary_img)
-    
     for y in range(binary_img.shape[0]):
         for x in range(binary_img.shape[1]):
             roi = padded[y:y+kernel_size, x:x+kernel_size]
@@ -99,11 +97,9 @@ def manual_erode(binary_img, kernel_size=5):
     return output
 
 def manual_dilate(binary_img, kernel_size=5):
-    
     pad = kernel_size // 2
     padded = np.pad(binary_img, pad, mode='constant', constant_values=0)
     output = np.zeros_like(binary_img)
-    
     for y in range(binary_img.shape[0]):
         for x in range(binary_img.shape[1]):
             roi = padded[y:y+kernel_size, x:x+kernel_size]
@@ -118,7 +114,7 @@ def get_hand_mask(frame):
 
     full_mask = np.zeros(frame.shape[:2], dtype=np.uint8)
     roi = frame[roi_y:, :]
-    
+
     roi_blur = cv2.GaussianBlur(roi, (5, 5), 0)
     hsv = cv2.cvtColor(roi_blur, cv2.COLOR_BGR2HSV)
 
@@ -128,12 +124,11 @@ def get_hand_mask(frame):
 
     mask1 = (H >= 0)   & (H <= 20)  & (S >= 30) & (S <= 255) & (V >= 60) & (V <= 255)
     mask2 = (H >= 160) & (H <= 179) & (S >= 30) & (S <= 255) & (V >= 60) & (V <= 255)
-    
+
     combined_mask = (mask1 | mask2).astype(np.uint8) * 255
 
     m_processed = manual_dilate(combined_mask, kernel_size=5)
     m_processed = manual_erode(m_processed, kernel_size=5)
-    
     m_processed = manual_erode(m_processed, kernel_size=5)
     final_mask  = manual_dilate(m_processed, kernel_size=5)
 
@@ -206,6 +201,8 @@ def load_background(path):
         bg_bgr = bg[:, :, :3]
     return cv2.resize(bg_bgr, (GAME_WIDTH, GAME_HEIGHT))
 
+
+# ===================== GAME OBJECTS =====================
 
 class Planet:
     def __init__(self, sprite_list, explode_sprite):
@@ -305,6 +302,7 @@ class FloatingText:
         return self.age >= self.lifetime
 
 
+# ===================== GAME STATE =====================
 
 class GameState:
     def __init__(self, sprites, planet_sprites, alien_sprite,
@@ -314,11 +312,15 @@ class GameState:
         self.alien_sprite   = alien_sprite
         self.explode_sprite = explode_sprite
         self.background     = background
+        # Hitung lebar karakter sebenarnya dari sprite
+        self.char_w         = self.sprites["stay"].shape[1]
         self.reset()
 
     def reset(self):
         char_h                    = self.sprites["stay"].shape[0]
-        self.x                    = float(GAME_WIDTH // 2 - CHAR_SCALE // 2)
+        # Spawn di tengah, dipastikan tidak melebihi batas kanan
+        self.x                    = float(max(0, min(GAME_WIDTH // 2 - self.char_w // 2,
+                                                      GAME_WIDTH - self.char_w)))
         self.y                    = float(GROUND_Y - char_h)
         self.vy                   = 0.0
         self.is_jumping           = False
@@ -349,10 +351,8 @@ class GameState:
             self.x        -= WALK_SPEED
             self.direction = "left"
 
-        if self.x > GAME_WIDTH:
-            self.x = float(-CHAR_SCALE)
-        elif self.x < -CHAR_SCALE:
-            self.x = float(GAME_WIDTH)
+        # Clamp karakter agar tidak keluar window (0 s.d. GAME_WIDTH - lebar karakter)
+        self.x = max(0.0, min(self.x, float(GAME_WIDTH - self.char_w)))
 
         if right_fingers in (1, 2, 3) and not self.is_jumping:
             self.vy         = JUMP_FORCE * right_fingers
@@ -404,7 +404,7 @@ class GameState:
                 self.hearts -= 1
                 p.dead = True
                 continue
-            if self.is_jumping and check_collision(ax, ay, CHAR_SCALE, char_h,
+            if self.is_jumping and check_collision(ax, ay, self.char_w, char_h,
                                                    int(p.x), int(p.y), p.w, p.h):
                 self.score += 1
                 p.hit()
@@ -419,7 +419,7 @@ class GameState:
                 self.hearts -= 1
                 a.dead = True
                 continue
-            if self.is_jumping and check_collision(ax, ay, CHAR_SCALE, char_h,
+            if self.is_jumping and check_collision(ax, ay, self.char_w, char_h,
                                                    int(a.x), int(a.y), a.w, a.h):
                 self.score += 2
                 a.hit()
@@ -429,17 +429,19 @@ class GameState:
 
     def draw(self):
         frame = self.background.copy()
-        
+
         for p in self.planets: p.draw(frame)
         for a in self.aliens:  a.draw(frame)
         overlay_sprite(frame, self.sprites[self.direction], int(self.x), int(self.y))
         for ft in self.float_texts: ft.draw(frame)
 
+        # HUD: hati
         for i in range(5):
             color = (0, 0, 220) if i < self.hearts else (100, 100, 100)
             cv2.circle(frame, (30 + i * 32, 30), 12, color, -1)
             cv2.circle(frame, (30 + i * 32, 30), 12, (200, 200, 200), 1)
 
+        # HUD: skor
         score_text = f"SCORE: {self.score}"
         (tw, _), _ = cv2.getTextSize(score_text, cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)
         cv2.putText(frame, score_text, (GAME_WIDTH - tw - 15, 35),
@@ -469,6 +471,8 @@ class GameState:
         return frame
 
 
+# ===================== LAYOUT BUILDER =====================
+
 def build_combined_display(game_frame, cam_view, mask_bgr):
     panel_h      = GAME_HEIGHT
     cam_panel_h  = panel_h // 2
@@ -488,9 +492,10 @@ def build_combined_display(game_frame, cam_view, mask_bgr):
     return np.hstack([game_frame, right_panel])
 
 
+# ===================== MAIN =====================
 
 def main():
-    print("=== AstroDev Game ===")
+    print("=== Astro-Dev Game ===")
     print("Tangan Kiri : 1=jalan kanan | 2=jalan kiri | 0/5=diam")
     print("Tangan Kanan: 1/2/3=lompat  | 5=tidak lompat")
     print("Q=keluar | R=restart (saat game over)")
@@ -500,7 +505,7 @@ def main():
         raise FileNotFoundError("Aset tidak ditemukan: assets/welcome.png")
     welcome_img = cv2.resize(welcome_img, (GAME_WIDTH, GAME_HEIGHT))
 
-    background     = load_background("assets/background.png")
+    background = load_background("assets/background.png")
     sprites = {
         "stay":  load_sprite("assets/dev-stay.png",  width=CHAR_SCALE),
         "right": load_sprite("assets/dev-right.png", width=CHAR_SCALE),

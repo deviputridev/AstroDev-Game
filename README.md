@@ -13,49 +13,78 @@
 
 ## Daftar Isi
 
+## Daftar Isi
+ 
 1. [Deskripsi Game](#1-deskripsi-game)
-2. [Fitur Game](#2-fitur-game)
-3. [Tools yang Digunakan](#3-tools-yang-digunakan)
-4. [Alur Program](#4-alur-program)
-5. [Implementasi Teknis](#5-implementasi-teknis)
-6. [Cara Menjalankan](#6-cara-menjalankan)
-7. [Dokumentasi Aset](#7-dokumentasi-aset)
-8. [Demo Video](#8-demo-video)
-9. [Struktur Direktori](#9-struktur-direktori)
+2. [Latar Belakang dan Motivasi](#2-latar-belakang-dan-motivasi)
+3. [Fitur Game](#3-fitur-game)
+4. [Tools yang Digunakan](#4-tools-yang-digunakan)
+5. [Arsitektur dan Struktur Kode](#5-arsitektur-dan-struktur-kode)
+6. [Perbandingan game.py vs main.py: Manual vs Built-in Morphology](#6-perbandingan-gamepy-vs-mainpy-manual-vs-built-in-morphology)
+7. [Alur Program](#7-alur-program)
+8. [Implementasi Teknis Mendetail](#8-implementasi-teknis-mendetail)
+9. [Analisis Kinerja dan Perbandingan](#9-analisis-kinerja-dan-perbandingan)
+10. [Cara Menjalankan](#10-cara-menjalankan)
+11. [Dokumentasi Aset](#11-dokumentasi-aset)
+12. [Demo Video](#12-demo-video)
+13. [Struktur Direktori](#13-struktur-direktori)
+14. [Kesimpulan](#14-kesimpulan)
 
 ---
 
 ## 1. Deskripsi Game
 
 **Astro-Dev** adalah game aksi berbasis Python yang dikendalikan sepenuhnya melalui gestur tangan menggunakan webcam, tanpa keyboard maupun mouse sebagai input permainan. Pemain berperan sebagai AstroDev, seorang astronot perempuan yang menjaga planetnya bersama **5 kucing penjaga berbaju antariksa** dari serangan dua ancaman: planet-planet asing yang berjatuhan dari luar angkasa, dan alien kucing hijau bernama *Glorb* yang mengendarai piring terbang. Setiap objek yang lolos menyentuh tanah akan mengurangi satu nyawa dari total 5 nyawa yang diwakili oleh indikator lingkaran merah di sudut kiri atas layar.
-
-Kontrol game sepenuhnya bergantung pada teknik **HSV-based skin color segmentation** dan **Convexity Defects finger counting** yang diimplementasikan menggunakan OpenCV. Tangan kiri mengontrol arah gerak horizontal karakter, sementara tangan kanan mengontrol ketinggian lompatan. Tidak ada library deteksi pose (seperti MediaPipe) yang digunakan; semua pipeline deteksi tangan dibangun dari primitif OpenCV dan NumPy.
+ 
+Kontrol game sepenuhnya bergantung pada teknik **HSV-based skin color segmentation** dan **Convexity Defects finger counting** yang diimplementasikan menggunakan OpenCV. Tangan kiri mengontrol arah gerak horizontal karakter, sementara tangan kanan mengontrol ketinggian lompatan. Tidak ada library deteksi pose seperti MediaPipe yang digunakan; semua pipeline deteksi tangan dibangun dari primitif OpenCV dan NumPy murni.
+ 
+Proyek ini terdiri dari **dua versi implementasi** yang dapat dibandingkan secara langsung:
+ 
+- **`game.py`** — Versi utama dengan morfologi **manual** menggunakan Python loop dan operasi NumPy dari nol, tanpa memanggil fungsi morfologi bawaan OpenCV sama sekali.
+- **`main.py`** — Versi alternatif dengan morfologi menggunakan fungsi **built-in** OpenCV (`cv2.erode()` dan `cv2.dilate()`), sehingga keduanya dapat dibandingkan dari sisi hasil deteksi, kecepatan eksekusi, dan kualitas mask yang dihasilkan.
 
 ---
 
-## 2. Fitur Game
+## 2. Latar Belakang dan Motivasi
+ 
+Proyek Astro-Dev lahir dari semangat untuk mengeksplorasi pengolahan citra secara mendalam tanpa bergantung pada solusi siap pakai. Dalam era di mana library seperti MediaPipe dapat mendeteksi pose tangan hanya dengan tiga baris kode, proyek ini sengaja mengambil jalur yang lebih panjang dengan membangun setiap tahap pipeline dari awal.
+ 
+Pemilihan tema game berbasis luar angkasa juga bukan kebetulan semata. Di balik estetika astronot dan planet-planet jatuh terdapat pesan yang lebih dalam: kita semua adalah penjaga bumi, dan seperti AstroDev yang berjuang mempertahankan planetnya dari ancaman luar, kita pun memiliki tanggung jawab yang sama terhadap satu-satunya rumah yang kita miliki di alam semesta ini.
+ 
+Dari sisi teknis, proyek ini menjawab pertanyaan mendasar dalam mata kuliah Pengolahan Citra dan Video: bagaimana cara sistem komputer "melihat" dan "memahami" gestur tangan manusia? Jawabannya dijabarkan secara eksplisit melalui kode dari piksel mentah kamera hingga tindakan karakter di layar game, setiap langkah transformasi citra dapat ditelusuri dan dipelajari.
 
-**Kontrol berbasis gestur tangan real-time**
+---
+
+## 3. Fitur Game
+
+**a. Kontrol berbasis gestur tangan real-time**
+
 Deteksi dilakukan pada setiap frame kamera (~30 fps) tanpa buffering atau delay tambahan. Karakter merespons perubahan jumlah jari yang ditampilkan secara langsung.
 
-**Dua jenis musuh dengan perilaku berbeda**
-Planet jatuh secara vertikal lurus dengan kecepatan acak antara 2 sampai 5 piksel per frame. Alien bergerak secara sinusoidal pada sumbu horizontal sambil turun, sehingga lintasannya tidak dapat diprediksi secara linier.
+**b. Dua jenis musuh dengan perilaku berbeda**
 
-**Sistem lompatan bertingkat tiga level**
+Planet jatuh secara vertikal lurus dengan kecepatan acak antara 2 sampai 5 piksel per frame, sehingga jalur lintasannya dapat diprediksi dan pemain dapat merencanakan lompatan. Sebaliknya, alien Glorb bergerak secara sinusoidal pada sumbu horizontal sambil turun, menciptakan pola zigzag yang tidak dapat diprediksi secara linier dan membutuhkan penyesuaian posisi yang dinamis dari pemain.
+
+
+**c. Sistem lompatan bertingkat tiga level**
+
 Ketinggian lompatan ditentukan oleh jumlah jari yang ditampilkan tangan kanan. Satu jari menghasilkan lompatan dengan kecepatan awal vertikal -22 piksel/frame, dua jari -44 piksel/frame, dan tiga jari -66 piksel/frame. Gravitasi konstan 2 piksel/frame^2 diterapkan setiap frame.
 
-**Sistem skor berbasis nilai objek**
-Planet bernilai 1 poin, alien bernilai 2 poin. Teks skor mengambang (+1 atau +2) muncul di posisi objek yang dihancurkan lalu memudar dalam 30 frame.
+**d. Sistem skor berbasis nilai objek**
 
-**Tampilan debug tiga panel simultan**
-Jendela game menampilkan frame permainan (800x800), feed kamera langsung (640x240), dan visualisasi mask HSV (640x240) secara bersamaan dalam satu jendela OpenCV berukuran 1440x800.
+Planet bernilai 1 poin dan alien bernilai 2 poin. Teks skor mengambang (+1 atau +2) muncul di posisi objek yang dihancurkan lalu memudar secara bertahap dalam 30 frame menggunakan teknik alpha blending dengan `cv2.addWeighted()`.
 
-**Morfologi manual tanpa cv2.morphologyEx**
-Fungsi erode dan dilate diimplementasikan dari nol menggunakan Python loop dan operasi array NumPy, bukan memanggil fungsi morfologi bawaan OpenCV.
+**e. Tampilan debug tiga panel simultan**
+
+Jendela game menampilkan frame permainan (800×800 piksel), feed kamera langsung (640×240 piksel), dan visualisasi mask HSV (640×240 piksel) secara bersamaan dalam satu jendela OpenCV berukuran 1440×800 piksel. Panel debug ini sangat berguna untuk memahami cara kerja deteksi tangan secara real-time dan melakukan kalibrasi threshold warna kulit.
+
+**f. Morfologi manual tanpa cv2.morphologyEx**
+
+Fungsi erode dan dilate diimplementasikan dari nol menggunakan Python loop dan operasi array NumPy, bukan memanggil fungsi morfologi bawaan OpenCV. Fitur utama yang membedakan proyek ini dari implementasi game serupa adalah ketersediaan dua file kode yang mengimplementasikan morfologi mask dengan pendekatan berbeda, memungkinkan perbandingan langsung antara pendekatan manual dan built-in.
 
 ---
 
-## 3. Tools yang Digunakan
+## 4. Tools yang Digunakan
 
 | Komponen | Versi | Peran dalam Proyek |
 |---|---|---|
@@ -71,106 +100,32 @@ Proyek ini sengaja membangun pipeline deteksi tangan dari primitif pengolahan ci
 
 ---
 
-## 4. Alur Program
-
-```
-INISIALISASI
-  Muat semua aset (gambar, background, spritesheet)
-  Buka kamera (cv2.VideoCapture(0))
-  Buat objek GameState
-  Tampilkan layar welcome
-
-LOOP UTAMA (per frame)
-  |
-  +-- Baca frame kamera
-  |     cap.read() -> ret, frame
-  |
-  +-- PRE-PROCESSING FRAME
-  |     flip horizontal (mirroring agar tidak terbalik)
-  |     resize ke 640x480
-  |
-  +-- PIPELINE DETEKSI TANGAN
-  |     get_hand_mask(frame)
-  |       - potong ROI: 35% bawah frame (y >= 168px dari atas)
-  |       - GaussianBlur 5x5
-  |       - BGR -> HSV
-  |       - buat mask1: H[0,20], S[30,255], V[60,255]
-  |       - buat mask2: H[160,179], S[30,255], V[60,255]
-  |       - gabung: combined = mask1 OR mask2
-  |       - morfologi: dilate(5) -> erode(5) -> erode(5) -> dilate(5)
-  |       - kembalikan full_mask dan roi_y
-  |
-  +-- SEGMENTASI ZONA
-  |     zona kiri  : x = [0, 320)
-  |     zona kanan : x = [320, 640)
-  |     get_largest_contour_in_region() untuk masing-masing zona
-  |
-  +-- PENGHITUNGAN JARI
-  |     count_fingers(contour)
-  |       - konveks hull (returnPoints=False)
-  |       - convexityDefects
-  |       - filter defect: sudut < 90 derajat DAN kedalaman > 10000
-  |       - return min(jumlah_defect + 1, 5)
-  |
-  +-- UPDATE LOGIKA GAME
-  |     GameState.update(left_fingers, right_fingers)
-  |       - gerak horizontal karakter
-  |       - fisika lompatan (vy += GRAVITY)
-  |       - spawn planet dan alien berdasarkan timer
-  |       - update posisi semua objek
-  |       - check_collisions()
-  |       - hapus objek mati
-  |
-  +-- RENDER
-  |     GameState.draw() -> game_frame (800x800)
-  |     anotasi cam_view dan mask_bgr
-  |     build_combined_display() -> gabungkan tiga panel
-  |     cv2.imshow()
-  |
-  +-- INPUT KEYBOARD
-        'q' -> keluar
-        'd' -> mulai game (dari layar welcome)
-        'r' -> restart (saat game over)
-```
+## 5. Arsitektur dan Struktur Kode
+ 
+Kedua file (`game.py` dan `main.py`) berbagi arsitektur modular yang sama dengan pemisahan tanggung jawab yang jelas:
+ 
+**Lapisan Utilitas** berisi fungsi-fungsi pembantu yang berdiri sendiri dan tidak bergantung pada state game: `load_sprite()` untuk memuat aset gambar dengan penanganan channel alpha otomatis, `slice_planet_spritesheet()` untuk memotong grid spritesheet menjadi list sprite individual, `overlay_sprite()` untuk alpha compositing Porter-Duff, `manual_erode()` dan `manual_dilate()` (hanya di `game.py`) untuk morfologi manual, `get_hand_mask()` sebagai pipeline deteksi utama, `get_largest_contour_in_region()` untuk isolasi kontur tangan per zona, `count_fingers()` untuk estimasi jumlah jari via convexity defects, dan `check_collision()` untuk AABB collision detection.
+ 
+**Lapisan Objek Game** berisi kelas-kelas yang merepresentasikan entitas game: `Planet` dengan perilaku jatuh lurus dan transisi ke animasi ledakan, `Alien` dengan perilaku jatuh sinusoidal dan transisi ledakan, serta `FloatingText` untuk teks skor animasi yang memudar.
+ 
+**Lapisan State Game** terdiri dari kelas `GameState` yang merupakan jantung logika game. Kelas ini menyimpan seluruh state permainan (posisi karakter, daftar objek aktif, skor, nyawa) dan mengekspos dua metode utama: `update()` yang menerima input jari dan memajukan simulasi satu frame, serta `draw()` yang me-render state saat ini ke array gambar 800×800 piksel.
+ 
+**Lapisan Tampilan** berisi fungsi `build_combined_display()` yang menggabungkan tiga panel (game frame, camera view, mask visualization) menjadi satu canvas tunggal untuk ditampilkan.
+ 
+**Lapisan Utama** adalah fungsi `main()` yang mengatur inisialisasi aset, loop kamera, integrasi antara pipeline deteksi tangan dan logika game, serta penanganan input keyboard.
 
 ---
 
-## 5. Implementasi Teknis
-
-### 5.1 Deteksi Warna Kulit (HSV Skin Segmentation)
-
-Fungsi `get_hand_mask()` pada baris 87 hingga 113.
-
-Deteksi tangan menggunakan pendekatan segmentasi warna di ruang warna HSV. Ruang warna HSV dipilih karena komponen Hue memisahkan informasi warna dari intensitas cahaya, sehingga lebih tahan terhadap variasi pencahayaan dibanding segmentasi langsung di ruang BGR.
-
-**Region of Interest (ROI):**
-Deteksi hanya dilakukan pada 65% bawah frame kamera (dari `y = frame_height * 0.35` ke bawah). Pembatasan ROI ini menghilangkan gangguan dari wajah dan latar belakang atas, sekaligus mengurangi beban komputasi morfologi manual yang mahal.
-
-**Range warna kulit yang digunakan:**
-
+## 6. Perbandingan game.py vs main.py: Manual vs Built-in Morphology
+ 
+Ini adalah perbedaan inti dan paling fundamental antara kedua file. Seluruh kode game, logika fisika, rendering, dan deteksi kontur identik di antara keduanya. Satu-satunya perbedaan terletak pada implementasi fungsi morfologi di dalam `get_hand_mask()`.
+ 
+### 6.1 Implementasi di game.py — Morfologi Manual
+ 
+Di `game.py`, fungsi `manual_erode()` dan `manual_dilate()` diimplementasikan dari nol menggunakan Python loop dan operasi array NumPy tanpa memanggil satu pun fungsi morfologi bawaan OpenCV.
+ 
 ```python
-# Range 1: warna kulit normal (oranye ke kuning)
-mask1 = (H >= 0) & (H <= 20) & (S >= 30) & (S <= 255) & (V >= 60) & (V <= 255)
-
-# Range 2: warna kulit dengan hue melingkar di ujung spektrum (merah tua)
-mask2 = (H >= 160) & (H <= 179) & (S >= 30) & (S <= 255) & (V >= 60) & (V <= 255)
-
-combined_mask = (mask1 | mask2).astype(np.uint8) * 255
-```
-
-Batas bawah saturasi (S >= 30) dan value (V >= 60) mencegah piksel putih, abu-abu, dan hitam ikut terdeteksi sebagai kulit.
-
-**Preprocessing sebelum thresholding:**
-Frame ROI di-blur menggunakan Gaussian Blur kernel 5x5 sebelum konversi ke HSV. Ini menghaluskan transisi warna pada tepi kulit sehingga mask yang dihasilkan lebih solid dan tidak berlubang-lubang.
-
-### 5.2 Morfologi Manual
-
-Fungsi `manual_erode()` dan `manual_dilate()` pada baris 68 hingga 85.
-
-Kedua fungsi ini diimplementasikan dari nol tanpa memanggil `cv2.erode()`, `cv2.dilate()`, atau `cv2.morphologyEx()`. Implementasi menggunakan sliding window dengan `np.pad` dan perulangan piksel:
-
-**Erosi:**
-```python
+# Erosi manual — game.py (baris 68–77)
 def manual_erode(binary_img, kernel_size=5):
     pad = kernel_size // 2
     padded = np.pad(binary_img, pad, mode='constant', constant_values=0)
@@ -178,13 +133,11 @@ def manual_erode(binary_img, kernel_size=5):
     for y in range(binary_img.shape[0]):
         for x in range(binary_img.shape[1]):
             roi = padded[y:y+kernel_size, x:x+kernel_size]
-            if np.all(roi == 255):   # piksel dipertahankan hanya jika seluruh kernel putih
+            if np.all(roi == 255):   # Piksel dipertahankan hanya jika seluruh kernel putih
                 output[y, x] = 255
     return output
-```
-
-**Dilasi:**
-```python
+ 
+# Dilasi manual — game.py (baris 79–88)
 def manual_dilate(binary_img, kernel_size=5):
     pad = kernel_size // 2
     padded = np.pad(binary_img, pad, mode='constant', constant_values=0)
@@ -192,221 +145,346 @@ def manual_dilate(binary_img, kernel_size=5):
     for y in range(binary_img.shape[0]):
         for x in range(binary_img.shape[1]):
             roi = padded[y:y+kernel_size, x:x+kernel_size]
-            if np.any(roi == 255):   # piksel diset putih jika ada satu saja piksel putih di kernel
+            if np.any(roi == 255):   # Piksel diset putih jika ada satu piksel putih di kernel
                 output[y, x] = 255
     return output
 ```
-
-**Urutan operasi morfologi yang diterapkan:**
-```
-dilate(5) -> erode(5)    = closing: menutup lubang kecil dalam mask kulit
-erode(5)  -> dilate(5)   = opening: menghilangkan noise kecil di luar kontur tangan
-```
-
-Empat tahap ini setara dengan `morphologicalClose` diikuti `morphologicalOpen`. Hasilnya adalah mask tangan yang lebih solid dan bersih dari artefak kecil.
-
-**Catatan performa:** Implementasi Python loop berjalan lambat pada resolusi penuh. Pada resolusi 640x480 dengan kernel 5x5, satu operasi morfologi memproses sekitar 307.000 piksel dalam nested loop. Ini merupakan trade-off yang disengaja untuk tujuan pembelajaran; pada aplikasi produksi digunakan `cv2.morphologyEx`.
-
-### 5.3 Penghitungan Jari via Convexity Defects
-
-Fungsi `count_fingers()` pada baris 122 hingga 145.
-
-Penghitungan jari menggunakan analisis geometri **Convex Hull** dan **Convexity Defects**. Convex hull adalah poligon terkecil yang membungkus seluruh kontur tangan. Titik-titik di kontur tangan yang berada di dalam hull (terutama di celah antar jari) disebut defect point.
-
-**Algoritma:**
-
-```
-1. Hitung convex hull dari kontur tangan (returnPoints=False -> kembalikan indeks)
-2. Hitung convexity defects dari kontur dan hull
-3. Untuk setiap defect (start, end, far, depth):
-   - start: titik ujung jari pertama
-   - end  : titik ujung jari berikutnya
-   - far  : titik terdalam di celah antar dua jari tersebut
-   - depth: kedalaman defect dalam piksel^2 (nilai mentah / 256 = piksel)
-
-4. Hitung panjang sisi segitiga (start-far-end):
-   a = jarak(end, start)
-   b = jarak(far, start)
-   c = jarak(end, far)
-
-5. Hitung sudut di titik far menggunakan hukum kosinus:
-   cos(angle) = (b^2 + c^2 - a^2) / (2 * b * c)
-
-6. Defect dihitung sebagai celah jari jika:
-   - angle < 90 derajat (sudut lancip = celah jari yang valid)
-   - depth > 10000 (untuk menghilangkan defect kecil dari noise)
-
-7. Jumlah jari = jumlah defect valid + 1
-   (karena n celah antar jari = n+1 jari)
-   Maksimum dikembalikan 5.
-```
-
-**Threshold yang digunakan:**
-Nilai `angle < 90` dipilih karena celah antar jari yang benar-benar terbuka membentuk sudut lancip. Jari yang merapat atau setengah terbuka menghasilkan sudut tumpul dan tidak ikut dihitung. Nilai `depth > 10000` (setara sekitar 100 piksel) memfilter defect yang sangat dangkal akibat ketidaksempurnaan kontur.
-
-### 5.4 Segmentasi Zona Tangan Kiri/Kanan
-
-Fungsi `get_largest_contour_in_region()` pada baris 116 hingga 120.
-
-Frame kamera dibagi menjadi dua zona vertikal: zona kiri (`x < 320`) dan zona kanan (`x >= 320`). Untuk setiap zona, dicari kontur dengan luas terbesar yang centroid-nya (`M10/M00`) berada di dalam batas zona dan luasnya melebihi `MIN_HAND_AREA = 5000` piksel persegi. Filter luas minimum ini mencegah kontur kecil dari noise atau pantulan cahaya ikut terdeteksi sebagai tangan.
-
-### 5.5 Fisika Karakter
-
-Fungsi `GameState.update()` mulai baris 213.
-
-Karakter menggunakan model fisika kinematika sederhana berbasis frame:
-
-```
-Setiap frame:
-  vy += GRAVITY          # GRAVITY = 2 piksel/frame^2
-  y  += vy
-
-Saat melompat (trigger dari tangan kanan):
-  vy = JUMP_FORCE * right_fingers   # JUMP_FORCE = -22
-
-Kondisi landing:
-  if y >= GROUND_Y - char_height:
-    y  = GROUND_Y - char_height
-    vy = 0
-    is_jumping = False
-```
-
-Kecepatan awal lompatan negatif (ke atas dalam koordinat layar). Gravitasi positif menarik karakter kembali ke bawah. Karakter hanya bisa melompat kembali setelah `is_jumping == False`, yaitu setelah menyentuh lantai.
-
-**Ketinggian lompatan berdasarkan jumlah jari:**
-
-| Jari Kanan | vy Awal | Ketinggian Maksimum |
-|---|---|---|
-| 1 | -22 piksel/frame | ~121 piksel di atas lantai |
-| 2 | -44 piksel/frame | ~484 piksel di atas lantai |
-| 3 | -66 piksel/frame | ~1089 piksel (melewati batas layar atas) |
-
-Ketinggian teoritis dihitung dari `h = vy^2 / (2 * GRAVITY)`.
-
-### 5.6 Deteksi Tabrakan (AABB Collision Detection)
-
-Fungsi `check_collision()` baris 148 dan `GameState.check_collisions()` baris 270.
-
-Tabrakan menggunakan metode **Axis-Aligned Bounding Box (AABB)**:
-
+ 
+Dan urutan aplikasinya di `get_hand_mask()`:
+ 
 ```python
-def check_collision(ax, ay, aw, ah, bx, by, bw, bh):
-    return (ax < bx + bw and ax + aw > bx and
-            ay < by + bh and ay + ah > by)
+# Urutan morfologi di game.py (baris 109–112)
+m_processed = manual_dilate(combined_mask, kernel_size=5)   # Langkah 1: Dilasi
+m_processed = manual_erode(m_processed, kernel_size=5)      # Langkah 2: Erosi → Closing selesai
+m_processed = manual_erode(m_processed, kernel_size=5)      # Langkah 3: Erosi lagi
+final_mask  = manual_dilate(m_processed, kernel_size=5)     # Langkah 4: Dilasi → Opening selesai
 ```
+ 
+Selain itu, `game.py` juga menambahkan **preprocessing Gaussian Blur** sebelum konversi HSV:
+ 
+```python
+# Preprocessing tambahan di game.py (baris 102)
+roi_blur = cv2.GaussianBlur(roi, (5, 5), 0)
+hsv = cv2.cvtColor(roi_blur, cv2.COLOR_BGR2HSV)  # Blur dulu, baru konversi
+```
+ 
+### 6.2 Implementasi di main.py — Morfologi Built-in OpenCV
+ 
+Di `main.py`, morfologi dilakukan langsung menggunakan fungsi C++ yang telah dioptimasi di dalam OpenCV. Tidak ada Python loop sama sekali; operasi berjalan di level native code.
+ 
+```python
+# Morfologi built-in di main.py (baris 83–88)
+kernel  = np.ones((5, 5), dtype=np.uint8)
+eroded  = cv2.erode(mask,    kernel, iterations=2)   # Erosi 2x
+opened  = cv2.dilate(eroded,  kernel, iterations=2)  # Dilasi 2x → Opening selesai
+dilated = cv2.dilate(opened,  kernel, iterations=3)  # Dilasi 3x
+closed  = cv2.erode(dilated,  kernel, iterations=1)  # Erosi 1x → Closing selesai
+```
+ 
+Perbedaan lain yang juga patut dicatat: `main.py` **tidak** menggunakan Gaussian Blur sebelum konversi HSV, konversi dilakukan langsung pada frame ROI mentah:
+ 
+```python
+# Tanpa preprocessing blur di main.py (baris 80–81)
+roi  = frame[roi_y:, :]
+hsv  = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)  # Langsung konversi tanpa blur
+```
+ 
+### 6.3 Tabel Perbandingan Komprehensif
+ 
+| Aspek | game.py (Manual) | main.py (Built-in) |
+|---|---|---|
+| **Implementasi erode** | Python nested loop + `np.all(roi == 255)` | `cv2.erode(mask, kernel, iterations=N)` |
+| **Implementasi dilate** | Python nested loop + `np.any(roi == 255)` | `cv2.dilate(mask, kernel, iterations=N)` |
+| **Bahasa eksekusi** | Python bytecode + NumPy C | C++ native (SIMD/NEON optimized) |
+| **Preprocessing sebelum HSV** | GaussianBlur 5×5 aktif | Tidak ada blur (langsung konversi) |
+| **Urutan operasi morfologi** | Dilate→Erode (Close) lalu Erode→Dilate (Open) | Erode×2→Dilate×2 (Open) lalu Dilate×3→Erode×1 (Close) |
+| **Total operasi morfologi** | 4 pass (1D+1E+1E+1D) | 8 pass (2E+2D+3D+1E) |
+| **Kecepatan estimasi (640×480)** | ~2–8 detik per frame (bergantung CPU) | <5 ms per frame |
+| **Tujuan penggunaan** | Pembelajaran dan demonstrasi algoritma | Performa real-time |
+| **Kualitas mask** | Lebih halus karena ada preprocessing blur | Sedikit lebih "kasar" di tepi tapi lebih cepat |
+ 
+---
 
-Dua kondisi diperiksa secara berurutan untuk setiap objek aktif:
-
-1. **Objek menyentuh lantai:** `obj.y + obj.h >= GROUND_Y` -> kurangi nyawa, set `obj.dead = True`
-2. **Karakter menyentuh objek sambil melompat:** `is_jumping == True` AND `check_collision(...)` -> tambah skor, panggil `obj.hit()`, set `vy = -8` (bouncing kecil)
-
-Pengecekan tabrakan dengan injakan hanya valid saat `is_jumping == True`. Ini berarti karakter yang menyentuh objek dari samping atau saat berdiri di tanah tidak mengaktifkan penghancuran objek.
-
-### 5.7 Sistem Spawn Objek
-
-Planet di-spawn oleh `spawn_timer` dengan interval awal 90 frame, diacak ±30 frame setelah setiap spawn. Alien di-spawn oleh `alien_timer` dengan interval acak antara 150 dan 200 frame. Batas maksimum objek aktif pada layar: 4 planet (`MAX_PLANETS`) dan 2 alien (`MAX_ALIENS`).
-
-**Gerak sinusoidal alien:**
+## 7. Alur Program
+ 
+```
+INISIALISASI
+  Muat semua aset (gambar, background, spritesheet)
+  Buka kamera (cv2.VideoCapture(0))
+  Buat objek GameState
+  Tampilkan layar welcome
+ 
+LOOP UTAMA (per frame)
+  |
+  +-- Baca frame kamera
+  |     cap.read() -> ret, frame
+  |
+  +-- PRE-PROCESSING FRAME
+  |     flip horizontal (mirroring agar tidak terbalik)
+  |     resize ke 640×480
+  |
+  +-- PIPELINE DETEKSI TANGAN [get_hand_mask()]
+  |     - Potong ROI: 35% bawah frame (y ≥ 168px dari atas pada frame 480px)
+  |     - [game.py] GaussianBlur 5×5 pada ROI
+  |     - BGR → HSV
+  |     - Buat mask1: H∈[0,20], S∈[30,255], V∈[60,255]  (kulit normal)
+  |     - Buat mask2: H∈[160,179], S∈[30,255], V∈[60,255] (kulit merah-tua)
+  |     - combined = mask1 OR mask2
+  |     - [game.py]  dilate(5) → erode(5) → erode(5) → dilate(5)  [MANUAL]
+  |     - [main.py]  erode×2 → dilate×2 → dilate×3 → erode×1      [BUILT-IN]
+  |     - Kembalikan full_mask dan roi_y
+  |
+  +-- SEGMENTASI ZONA
+  |     Zona kiri  : x ∈ [0, 320)
+  |     Zona kanan : x ∈ [320, 640)
+  |     get_largest_contour_in_region() untuk masing-masing zona
+  |
+  +-- PENGHITUNGAN JARI [count_fingers()]
+  |     - Konveks hull (returnPoints=False → kembalikan indeks)
+  |     - convexityDefects
+  |     - Filter defect: sudut < 90° DAN kedalaman > 10000
+  |     - return min(jumlah_defect + 1, 5)
+  |
+  +-- UPDATE LOGIKA GAME [GameState.update()]
+  |     - Gerak horizontal karakter berdasarkan left_fingers
+  |     - Fisika lompatan (vy += GRAVITY setiap frame)
+  |     - Trigger lompatan berdasarkan right_fingers
+  |     - Spawn planet dan alien berdasarkan timer
+  |     - Update posisi semua objek aktif
+  |     - check_collisions(): cek injakan dan lolosnya objek ke lantai
+  |     - Hapus objek yang dead dari list
+  |
+  +-- RENDER [GameState.draw() + build_combined_display()]
+  |     - Gambar background.copy()
+  |     - Overlay semua planet dan alien (atau efek ledakan)
+  |     - Overlay sprite karakter (stay/left/right)
+  |     - Render teks skor melayang
+  |     - Render HUD (lingkaran nyawa, skor)
+  |     - Anotasi cam_view: garis zona, bounding box tangan, label jari
+  |     - Konversi mask ke BGR untuk visualisasi
+  |     - Gabungkan 3 panel: game (800×800) + kamera (640×240) + mask (640×240)
+  |     - cv2.imshow()
+  |
+  +-- INPUT KEYBOARD
+        'q' → keluar
+        'd' → mulai game dari welcome
+        'r' → restart (saat game over)
+```
+ 
+---
+ 
+## 8. Implementasi Teknis Mendetail
+ 
+### 8.1 Deteksi Warna Kulit (HSV Skin Segmentation)
+ 
+Fungsi `get_hand_mask()` adalah pintu masuk seluruh pipeline deteksi gestur. Prinsip dasarnya adalah bahwa warna kulit manusia, meskipun bervariasi antara individu, menempati rentang yang relatif terbatas di ruang warna HSV (Hue-Saturation-Value). Ruang warna ini dipilih daripada BGR atau RGB karena komponen Hue memisahkan informasi "jenis warna" dari intensitas cahaya. Akibatnya, kulit yang diterangi lampu terang dan kulit dalam bayangan memiliki nilai Hue yang serupa, meskipun nilai Brightness (V) berbeda jauh.
+ 
+**Region of Interest (ROI):** Deteksi hanya dilakukan pada 65% bawah frame kamera, dimulai dari `roi_y = int(frame_height * 0.35)`. Pada resolusi 480 piksel tinggi, ini berarti deteksi dimulai dari piksel ke-168. Pembatasan ROI ini sangat penting karena wajah manusia juga memiliki warna kulit yang sama dengan tangan. Tanpa pembatasan ini, wajah yang terlihat di bagian atas frame akan ikut terdeteksi sebagai "tangan" dan menghasilkan pembacaan jari yang salah. Di samping itu, memproses hanya 65% frame berarti beban komputasi morfologi manual di `game.py` berkurang proporsional, dari ~307.000 piksel menjadi ~199.000 piksel per operasi.
+ 
+**Dual-range masking untuk warna kulit:** Pada ruang warna HSV OpenCV, kanal Hue memiliki rentang 0–179 (bukan 0–359). Warna merah dan merah-oranye yang mencakup sebagian besar warna kulit manusia terbagi di dua ujung spektrum: nilai rendah (H ≈ 0–20) dan nilai tinggi (H ≈ 160–179). Oleh karena itu dua mask dibuat dan digabungkan dengan OR:
+ 
+```python
+mask1 = (H >= 0)   & (H <= 20)  & (S >= 30) & (S <= 255) & (V >= 60) & (V <= 255)
+mask2 = (H >= 160) & (H <= 179) & (S >= 30) & (S <= 255) & (V >= 60) & (V <= 255)
+combined_mask = (mask1 | mask2).astype(np.uint8) * 255
+```
+ 
+Batas bawah saturasi (S ≥ 30) mencegah piksel abu-abu dan putih terdeteksi sebagai kulit karena putih dan abu-abu memiliki saturasi mendekati nol. Batas bawah value (V ≥ 60) mencegah piksel gelap dan hitam ikut terdeteksi. Kombinasi kedua filter ini memastikan bahwa hanya piksel berwarna cerah dengan nuansa oranye-merah yang lolos sebagai kandidat kulit.
+ 
+### 8.2 Operasi Morfologi — Prinsip dan Cara Kerja
+ 
+Morfologi matematika dalam pengolahan citra beroperasi pada gambar biner (hitam-putih) menggunakan sebuah elemen struktural (kernel) yang digeser melintasi seluruh gambar. Kernel menentukan "lingkungan" piksel mana saja yang dipertimbangkan saat memutuskan nilai output sebuah piksel.
+ 
+**Erosi** adalah operasi yang "mengecilkan" atau "mengikis" objek putih. Secara formal, sebuah piksel output diset menjadi putih (255) jika dan hanya jika **seluruh piksel** dalam jendela kernel di posisi tersebut adalah putih. Konsekuensinya: objek putih kecil yang ukurannya lebih kecil dari kernel akan hilang sepenuhnya, tepi objek besar menyusut ke dalam sebesar setengah ukuran kernel, dan lubang-lubang kecil di dalam objek putih akan membesar. Implementasi manualnya di `game.py` menggunakan `np.all(roi == 255)` yang secara langsung menerjemahkan definisi formal erosi.
+ 
+**Dilasi** adalah kebalikan erosi yang "memperbesar" atau "menggembungkan" objek putih. Sebuah piksel output diset putih jika **ada minimal satu piksel** dalam jendela kernel yang putih. Akibatnya: objek putih membesar ke luar sebesar setengah kernel, lubang-lubang kecil dalam objek tertutup, dan dua objek yang hampir bersentuhan bisa menyambung. Implementasi manualnya menggunakan `np.any(roi == 255)`.
+ 
+**Closing (Dilasi → Erosi):** Menerapkan dilasi diikuti erosi. Hasilnya adalah penutupan celah dan lubang kecil di dalam objek putih tanpa mengubah ukuran keseluruhan objek secara signifikan. Ini digunakan di `game.py` untuk menyambung bagian-bagian mask kulit yang terputus akibat pantulan cahaya di permukaan telapak tangan.
+ 
+**Opening (Erosi → Dilasi):** Menerapkan erosi diikuti dilasi. Hasilnya adalah penghapusan objek-objek putih kecil (noise) yang ukurannya lebih kecil dari kernel, tanpa banyak mengubah bentuk objek besar. Ini digunakan untuk membersihkan noise kecil dari latar belakang yang kebetulan memiliki warna serupa dengan kulit.
+ 
+Urutan lengkap di `game.py` — Dilasi→Erosi (Closing) lalu Erosi→Dilasi (Opening) — pertama menutup lubang di dalam mask tangan, kemudian membersihkan artefak kecil di luar kontur tangan. Hasilnya adalah mask yang lebih solid dan bersih dibandingkan hanya menerapkan satu jenis operasi.
+ 
+### 8.3 Cara Kerja Morfologi Manual di game.py Secara Langkah-demi-Langkah
+ 
+Memahami implementasi `manual_erode()` secara mendalam sangat penting karena ini adalah inti kontribusi teknis `game.py`. Berikut penjelasan langkah per langkah untuk satu panggilan `manual_erode(combined_mask, kernel_size=5)` pada mask dengan resolusi ROI misalnya 480×640:
+ 
+**Langkah 1 — Padding:** `np.pad(binary_img, pad, mode='constant', constant_values=0)` menambahkan bingkai piksel hitam (nilai 0) sebesar `pad = 5//2 = 2` piksel di setiap sisi. Gambar 480×640 menjadi 484×644. Padding ini diperlukan agar piksel di tepi gambar juga mendapat kernel yang penuh (tidak melewati batas array).
+ 
+**Langkah 2 — Nested loop:** Loop luar iterasi `y` dari 0 hingga 479 (tinggi gambar asli), loop dalam iterasi `x` dari 0 hingga 639 (lebar gambar asli). Total iterasi: 480 × 640 = 307.200 iterasi.
+ 
+**Langkah 3 — Ekstraksi ROI kernel:** `roi = padded[y:y+5, x:x+5]` mengambil jendela 5×5 piksel dari gambar yang telah di-pad, berpusat di posisi (x, y) pada gambar asli. Karena gambar sudah di-pad 2 piksel, jendela ini selalu valid (tidak pernah keluar batas).
+ 
+**Langkah 4 — Keputusan erosi:** `np.all(roi == 255)` mengevaluasi apakah semua 25 piksel dalam jendela 5×5 bernilai 255. Jika ya, piksel output di posisi (x, y) diset 255 (putih). Jika ada satu piksel pun yang hitam, output diset 0 (hitam, nilai default dari `np.zeros_like`).
+ 
+Proses serupa berlaku untuk `manual_dilate()`, dengan perbedaan pada Langkah 4: `np.any(roi == 255)` mengeset output menjadi putih jika minimal satu piksel dalam kernel putih.
+ 
+Meski sederhana secara konseptual, performa implementasi ini sangat bergantung pada kecepatan Python interpreter dalam menjalankan 307.200+ iterasi loop per frame. Ini adalah trade-off yang disengaja dan menjadi bahan analisis perbandingan dengan pendekatan built-in di `main.py`.
+ 
+### 8.4 Penghitungan Jari via Convexity Defects
+ 
+Fungsi `count_fingers()` menggunakan pendekatan geometris berbasis **Convex Hull** dan **Convexity Defects** yang tidak memerlukan training data atau model machine learning apapun.
+ 
+**Convex Hull** adalah poligon cembung terkecil yang dapat membungkus seluruh kontur tangan. Ketika jari-jari terentang, kontur tangan memiliki bentuk yang "cekung" di celah antar jari. Titik-titik kontur yang terletak di dalam hull (berada di sisi cekung) disebut **Convexity Defects**.
+ 
+Setiap defect memiliki empat komponen: `start` (titik ujung jari pertama yang berada di hull), `end` (titik ujung jari berikutnya yang berada di hull), `far` (titik kontur terdalam di celah antar dua jari tersebut yang paling jauh dari hull), dan `depth` (jarak terdalam ini dalam satuan piksel dikali 256).
+ 
+Tiga titik tersebut — start, end, dan far — membentuk sebuah segitiga. Sudut di titik `far` merupakan sudut celah antar dua jari. Celah jari yang benar-benar terbuka membentuk sudut lancip (< 90°), sedangkan defect yang bukan celah jari (misalnya akibat ketidaksempurnaan kontur) umumnya membentuk sudut tumpul. Filter kedua, `depth > 10000`, memastikan celah yang terlalu dangkal (kurang dari ~100 piksel) tidak ikut dihitung. Setelah filtering, jumlah defect valid ditambah 1 memberikan estimasi jumlah jari yang terlihat (`n` celah = `n+1` jari).
+ 
+```python
+a = np.linalg.norm(np.array(end) - np.array(start))   # Sisi depan jari ke jari
+b = np.linalg.norm(np.array(far) - np.array(start))   # Sisi kiri celah
+c = np.linalg.norm(np.array(end) - np.array(far))     # Sisi kanan celah
+cos_angle = (b**2 + c**2 - a**2) / (2 * b * c + 1e-6)  # Hukum kosinus
+angle = np.degrees(np.arccos(np.clip(cos_angle, -1, 1)))
+if angle < 90 and d > 10000:
+    count += 1
+```
+ 
+Epsilon `1e-6` ditambahkan ke penyebut untuk mencegah pembagian dengan nol ketika `b` atau `c` sangat kecil. `np.clip(cos_angle, -1, 1)` memastikan nilai tidak keluar rentang valid `arccos` akibat error floating-point kecil.
+ 
+### 8.5 Segmentasi Zona Tangan Kiri/Kanan
+ 
+Frame kamera dibagi menjadi dua zona vertikal pada titik tengah `x = 320`. Fungsi `get_largest_contour_in_region()` menerima mask biner dan batas zona `x_min`/`x_max`, lalu mencari kontur OpenCV (`cv2.findContours()`) yang centroid-nya berada di dalam zona tersebut dan luasnya melebihi `MIN_HAND_AREA = 5000` piksel persegi.
+ 
+Pemilihan kontur terbesar (bukan kontur pertama) penting karena mask HSV sering menghasilkan beberapa kontur kecil dari noise latar belakang. Kontur tangan yang sesungguhnya hampir selalu memiliki area jauh lebih besar dari noise, sehingga pemilihan berdasarkan area terbesar memberikan hasil yang stabil. Ambang batas 5000 piksel persegi setara dengan kontur persegi berukuran sekitar 70×70 piksel, cukup kecil untuk menangkap tangan yang jauh dari kamera namun cukup besar untuk memfilter sebagian besar noise.
+ 
+### 8.6 Fisika Karakter
+ 
+Model fisika karakter menggunakan kinematika berbasis frame yang sederhana namun cukup untuk memberikan feel lompatan yang realistis. Setiap frame, kecepatan vertikal `vy` ditambah konstanta gravitasi `GRAVITY = 2`, dan posisi `y` diperbarui dengan `y += vy`. Saat lompatan dipicu, `vy` diset menjadi nilai negatif (ke atas dalam koordinat layar di mana y bertambah ke bawah).
+ 
+Ketinggian maksimum lompatan dapat dihitung secara analitik: `h = vy_awal² / (2 × GRAVITY)`. Untuk lompatan tinggi (3 jari): `vy = -66`, maka `h = 66² / (2×2) = 4356/4 = 1089 piksel`, yang melampaui batas atas layar 800 piksel. Ini berarti karakter akan benar-benar keluar dari area layar sebelum kembali turun, sebuah efek yang disengaja untuk memberikan variasi tingkat kesulitan.
+ 
+### 8.7 Deteksi Tabrakan (AABB Collision Detection)
+ 
+Metode Axis-Aligned Bounding Box (AABB) adalah algoritma deteksi tabrakan paling sederhana dan efisien untuk objek yang bergerak sejajar sumbu koordinat. Dua persegi panjang A dan B tidak bertabrakan jika dan hanya jika salah satu kondisi berikut terpenuhi: A sepenuhnya di kiri B, A sepenuhnya di kanan B, A sepenuhnya di atas B, atau A sepenuhnya di bawah B. Jika tidak ada kondisi yang terpenuhi, keduanya bertabrakan.
+ 
+Penting untuk dicatat bahwa penghancuran objek (menambah skor) hanya terjadi saat `is_jumping == True`. Ini berarti karakter yang hanya berjalan dan menyentuh objek secara horizontal tidak mengaktifkan mekanisme ini. Pemain harus secara aktif melompat untuk menghancurkan objek. Saat berhasil mengintersep objek, `vy` diset ke -8 untuk memberikan pantulan kecil yang memberikan feedback haptic-visual bahwa injakan berhasil.
+ 
+### 8.8 Gerak Sinusoidal Alien
+ 
+Posisi horizontal alien diperbarui setiap frame dengan:
+ 
 ```python
 self.x += math.sin(self.frame_count * 0.05 + self.drift_offset) * 2
 ```
-Parameter `0.05` menentukan frekuensi osilasi (satu siklus penuh setiap ~126 frame). Amplitudo 2 piksel per frame menghasilkan pergeseran horizontal maksimum sekitar ±40 piksel dari posisi spawn. `drift_offset` yang diacak antara 0 dan 2*pi memastikan setiap alien memiliki fase awal yang berbeda, sehingga tidak semua alien bergerak ke arah yang sama secara bersamaan.
-
-### 5.8 Rendering Sprite dengan Alpha Blending
-
-Fungsi `overlay_sprite()` baris 56 hingga 71.
-
-Semua aset dimuat dengan channel alpha (BGRA). Rendering menggunakan alpha compositing manual:
-
-```python
-alpha   = sp_crop[:, :, 3:4].astype(np.float32) / 255.0
-fg      = sp_crop[:, :, :3].astype(np.float32)
-bg      = fr_crop.astype(np.float32)
-blended = (alpha * fg + (1 - alpha) * bg).astype(np.uint8)
+ 
+Fungsi sinus menghasilkan nilai antara -1 dan +1. Dikalikan 2, alien bergerak maksimal ±2 piksel per frame. Dengan frekuensi `0.05` radian per frame, satu siklus penuh osilasi terjadi setiap `2π/0.05 ≈ 126` frame, atau sekitar 4 detik pada 30 fps. `drift_offset` yang diambil dari distribusi seragam [0, 2π] memastikan setiap alien memiliki fase awal yang berbeda, sehingga tidak semua alien bergerak ke arah yang sama saat muncul secara bersamaan.
+ 
+### 8.9 Rendering Sprite dengan Alpha Blending (Porter-Duff Over)
+ 
+Semua sprite dimuat dengan kanal alpha menggunakan `cv2.IMREAD_UNCHANGED`. Jika file asli hanya 3 kanal (BGR), alpha penuh (255) ditambahkan secara otomatis. Rendering menggunakan compositing formula:
+ 
 ```
-
-Formula ini adalah **Porter-Duff "over" compositing**. Piksel transparan (alpha=0) menghasilkan latar belakang murni, piksel opak (alpha=255) menghasilkan sprite murni, dan piksel semi-transparan menghasilkan campuran proporsional. Ini memungkinkan sprite dengan bentuk tidak persegi (seperti alien dan ledakan) ditampilkan tanpa kotak putih di sekelilingnya.
-
-Fungsi juga menangani kasus **clipping** di tepi layar: jika sprite sebagian keluar batas frame, hanya bagian yang tumpang tindih dengan frame yang dihitung dan di-render.
-
-### 5.9 Slicing Spritesheet Planet
-
-Fungsi `slice_planet_spritesheet()` baris 42 hingga 54.
-
-File `planet.png` berisi 9 varian planet dalam grid 3 kolom x 3 baris. Fungsi membagi gambar menjadi 9 sel berdasarkan pembagian dimensi, lalu me-resize setiap sel ke `PLANET_SIZE = 80x80` piksel. Hasilnya adalah list 9 sprite yang diakses secara acak saat setiap planet baru di-spawn.
-
+output = alpha × foreground + (1 − alpha) × background
+```
+ 
+Di mana alpha dalam rentang [0.0, 1.0]. Ini adalah formula compositing Porter-Duff "over", standar industri untuk overlay gambar dengan transparansi. Penanganan **clipping** di tepi layar dilakukan dengan menghitung irisan antara bounding box sprite dan batas frame, lalu hanya merender bagian yang tumpang tindih. Ini mencegah crash akibat akses indeks array di luar batas ketika objek sebagian keluar dari layar.
+ 
 ---
-
-## 6. Cara Menjalankan
-
+ 
+## 9. Analisis Kinerja dan Perbandingan
+ 
+### 9.1 Mengapa game.py Lebih Lambat dari main.py
+ 
+Perbedaan kinerja antara `game.py` dan `main.py` bukan sekadar perbedaan implementasi kecil — ini adalah perbedaan mendasar dalam lapisan eksekusi kode.
+ 
+Di `game.py`, setiap operasi morfologi membutuhkan eksekusi Python interpreter untuk ratusan ribu iterasi loop. Python interpreter memiliki overhead yang signifikan per instruksi dibanding kode native. Meskipun `np.all()` dan `np.any()` dipanggil di dalam loop (keduanya adalah fungsi C yang cepat), loop Python itu sendiri tetap dieksekusi di level Python bytecode.
+ 
+Di `main.py`, `cv2.erode()` dan `cv2.dilate()` adalah fungsi C++ yang dikompilasi dengan optimasi SIMD (Single Instruction Multiple Data). Pada prosesor modern, SIMD memungkinkan operasi AND/OR dilakukan pada 16, 32, atau bahkan 64 piksel secara paralel dalam satu instruksi CPU. Hasilnya adalah perbedaan kecepatan yang bisa mencapai ratusan hingga ribuan kali lipat untuk operasi yang sama.
+ 
+Secara kuantitatif, pada resolusi ROI sekitar 480×640 dengan kernel 5×5:
+ 
+- `game.py` (manual): Memproses ~307.200 iterasi Python loop per satu operasi erode/dilate. Dengan 4 operasi per frame dan overhead interpreter Python, estimasi waktu per frame untuk bagian morfologi saja bisa mencapai **2–8 detik** tergantung kecepatan CPU. Ini membuat game tidak dapat berjalan secara real-time tanpa optimasi tambahan.
+- `main.py` (built-in): Fungsi C++ yang dioptimasi menyelesaikan operasi morfologi yang setara dalam **< 1 ms** per operasi, sehingga total 8 operasi selesai dalam < 8 ms. Dengan waktu akuisisi frame kamera dan rendering, loop utama masih dapat berjalan mendekati 30 fps.
+### 9.2 Kualitas Hasil Mask
+ 
+Meskipun lebih lambat, `game.py` memiliki potensi menghasilkan mask yang sedikit lebih halus karena adanya preprocessing Gaussian Blur sebelum konversi HSV. Gaussian Blur menghaluskan transisi warna di tepi kulit, mengurangi piksel "setengah kulit" yang menghasilkan tepi mask yang bergerigi. Hasilnya adalah kontur tangan yang lebih mulus dan pengukuran convexity defects yang lebih akurat.
+ 
+`main.py` tanpa Gaussian Blur akan menghasilkan tepi mask yang sedikit lebih bergerigi, terutama pada kondisi pencahayaan yang tidak merata. Namun dalam praktik, kualitas perbedaan ini sering kali tidak terlihat secara visual karena operasi morfologi berikutnya (terutama dilasi) cukup efektif untuk menutup lubang-lubang kecil di tepi kontur.
+ 
+### 9.3 Perbedaan Struktur Urutan Morfologi
+ 
+Urutan morfologi di kedua file berbeda secara semantik. Di `game.py` urutan Dilate→Erode (Closing) lalu Erode→Dilate (Opening) berarti program pertama-tama memastikan mask tangan "terisi" dan solid (closing), kemudian membersihkan noise kecil di sekitar kontur (opening). Di `main.py` urutan Erode→Dilate (Opening) lalu Dilate→Erode (Closing) memiliki makna sebaliknya: membersihkan noise terlebih dahulu baru mengisi lubang. Secara teoritis, urutan di `game.py` lebih cocok untuk mask kulit yang sering memiliki lubang di tengah (akibat pantulan cahaya di telapak tangan), sementara urutan di `main.py` lebih agresif dalam menghilangkan deteksi palsu kecil.
+ 
+### 9.4 Implikasi Praktis untuk Pengembangan
+ 
+Dua file ini bersama-sama mewakili dua tahap umum dalam pengembangan sistem pengolahan citra: fase eksplorasi/pemahaman (`game.py`) dan fase produksi/optimasi (`main.py`). Dalam proyek nyata, tim biasanya mulai dengan implementasi yang mudah dipahami untuk memvalidasi algoritma, lalu beralih ke implementasi yang dioptimasi setelah algoritma terbukti benar. Proyek Astro-Dev mendokumentasikan kedua fase ini secara eksplisit, menjadikannya referensi pembelajaran yang lengkap.
+ 
+---
+ 
+## 10. Cara Menjalankan
+ 
 ### Prasyarat
-
+ 
 - Python 3.10 atau lebih baru
-- Webcam aktif
+- Webcam aktif dan dikenali sistem operasi
 - Sistem operasi Windows, Linux, atau macOS (fitur suara hanya aktif di Windows)
-- Latar belakang polos (disarankan putih atau abu-abu gelap) untuk akurasi deteksi kulit
-
-### Instalasi
-
+- Latar belakang polos (putih atau abu-abu gelap) untuk akurasi deteksi kulit yang optimal
+- Pencahayaan merata pada tangan; hindari cahaya dari belakang (backlight) yang membuat tangan menjadi bayangan gelap
+### Instalasi dan Menjalankan
+ 
 ```bash
-# Clone atau ekstrak repositori
+# Clone repositori
 git clone https://github.com/deviputridev/AstroDev-Game.git
 cd "AstroDev-Game"
-
-# Buat dan aktifkan virtual environment
+ 
+# Buat virtual environment
 python -m venv venv
-
-# Windows
+ 
+# Aktivasi virtual environment
+# Windows:
 venv\Scripts\activate
-
-# Linux / macOS
+# Linux / macOS:
 source venv/bin/activate
-
+ 
 # Install dependencies
 pip install opencv-python numpy
-
-# Jalankan game
+ 
+# Jalankan versi manual morfologi (lebih lambat, untuk pembelajaran)
 python game.py
+ 
+# ATAU jalankan versi built-in morfologi (real-time, untuk gameplay normal)
+python main.py
 ```
-
-**Penting:** Perintah `python game.py` harus dijalankan dari dalam direktori `Astro-Dev Game/` agar path relatif `assets/` terbaca dengan benar.
-
+ 
+**Penting:** Kedua perintah harus dijalankan dari dalam direktori `AstroDev-Game/` agar path relatif `assets/` dapat terbaca dengan benar. Jika kamera tidak terbuka, pastikan tidak ada aplikasi lain yang sedang menggunakan webcam dan coba ubah indeks kamera dari `0` menjadi `1` di baris `cv2.VideoCapture(0)`.
+ 
 ### Kontrol
-
+ 
 | Tangan | Jumlah Jari | Aksi |
 |---|---|---|
 | Kiri | 1 jari | Berjalan ke kanan |
 | Kiri | 2 jari | Berjalan ke kiri |
 | Kiri | 0 atau 5 jari | Berhenti (diam) |
-| Kanan | 1 jari | Lompat kecil |
-| Kanan | 2 jari | Lompat sedang |
-| Kanan | 3 jari | Lompat tinggi |
+| Kanan | 1 jari | Lompat kecil (~121 piksel) |
+| Kanan | 2 jari | Lompat sedang (~484 piksel) |
+| Kanan | 3 jari | Lompat tinggi (melewati batas layar) |
 | Kanan | 0 atau 5 jari | Tidak melompat |
-| Keyboard D | - | Mulai game dari layar welcome |
-| Keyboard R | - | Restart (saat game over) |
-| Keyboard Q | - | Keluar game |
-
+| Keyboard D | — | Mulai game dari layar welcome |
+| Keyboard R | — | Restart saat game over |
+| Keyboard Q | — | Keluar game |
+ 
 ### Mekanisme Skor dan Nyawa
-
+ 
 - Melompat dan menginjak planet: **+1 poin**
-- Melompat dan menginjak alien: **+2 poin**
-- Planet atau alien lolos menyentuh lantai: **-1 nyawa**
+- Melompat dan menginjak alien Glorb: **+2 poin**
+- Planet atau alien lolos menyentuh lantai: **−1 nyawa**
 - Total nyawa: 5 (ditampilkan sebagai 5 lingkaran merah di pojok kiri atas)
 - Nyawa habis: game over, tekan R untuk main lagi
-
 ### Tips Bermain
-
-Posisikan tangan 35 cm atau lebih dari kamera di bagian bawah frame. Gunakan cahaya yang merata pada kedua telapak tangan. Hindari pakaian berwarna oranye atau merah muda yang dapat terdeteksi sebagai kulit. Gunakan tangan kiri untuk navigasi horizontal dan tangan kanan untuk melompat secara bersamaan agar bisa mengintersep objek jatuh dari berbagai posisi.
-
+ 
+Posisikan tangan 30–40 cm dari kamera di bagian bawah frame kamera agar masuk ke dalam zona deteksi (65% bawah frame). Gunakan pencahayaan yang merata dan konsisten pada kedua telapak tangan. Hindari mengenakan pakaian berwarna oranye, merah muda, atau cokelat terang yang dapat terdeteksi sebagai kulit oleh algoritma HSV segmentation. Gunakan tangan kiri dan kanan secara bersamaan untuk kombinasi gerakan dan lompatan yang efektif, terutama saat alien Glorb dan beberapa planet muncul bersamaan.
+ 
 ---
 
-## 7. Dokumentasi Aset
+## 11. Dokumentasi Aset
 
 Seluruh aset visual dirancang sendiri dengan gaya pixel art dan memiliki filosofi desain yang konsisten: astronot perempuan dengan kucing penjaga sebagai tema utama, palet warna pastel dan cosmic, serta estetika retro pixel art.
 
 ---
 
-### 7.1 Layar Welcome (`welcome.png`)
+### 11.1 Layar Welcome (`welcome.png`)
 
 ![Welcome Screen](assets/welcome.png)
 
@@ -414,7 +492,7 @@ Layar pembuka game berukuran 1080x1080 piksel yang digabungkan dengan background
 
 ---
 
-### 7.2 Background Lingkungan (`background.png`)
+### 11.2 Background Lingkungan (`background.png`)
 
 ![Background](assets/background.png)
 
@@ -422,7 +500,7 @@ Background berukuran asli besar yang di-resize ke 800x800 piksel saat runtime. M
 
 ---
 
-### 7.3 Karakter AstroDev: Idle (`dev-stay.png`)
+### 11.3 Karakter AstroDev: Idle (`dev-stay.png`)
 
 ![AstroDev Stay](assets/dev-stay.png)
 
@@ -435,7 +513,7 @@ sprites["stay"] = load_sprite("assets/dev-stay.png", width=CHAR_SCALE)  # CHAR_S
 
 ---
 
-### 7.4 Karakter AstroDev: Bergerak Kanan (`dev-right.png`)
+### 11.4 Karakter AstroDev: Bergerak Kanan (`dev-right.png`)
 
 ![AstroDev Right](assets/dev-right.png)
 
@@ -443,7 +521,7 @@ Sprite yang aktif saat `left_fingers == 1`. AstroDev ditampilkan dalam pose mela
 
 ---
 
-### 7.5 Karakter AstroDev: Bergerak Kiri (`dev-left.png`)
+### 11.5 Karakter AstroDev: Bergerak Kiri (`dev-left.png`)
 
 ![AstroDev Left](assets/dev-left.png)
 
@@ -451,7 +529,7 @@ Sprite yang aktif saat `left_fingers == 2`. Komposisi hampir identik dengan `dev
 
 ---
 
-### 7.6 Spritesheet Planet (`planet.png`)
+### 11.6 Spritesheet Planet (`planet.png`)
 
 ![Planet Spritesheet](assets/planet.png)
 
@@ -473,7 +551,7 @@ Setiap sel di-resize ke `80x80` piksel. Saat planet baru di-spawn, `self.sprite_
 
 ---
 
-### 7.7 Musuh Alien: Glorb (`alien.png`)
+### 11.7 Musuh Alien: Glorb (`alien.png`)
 
 ![Alien](assets/alien.png)
 
@@ -487,7 +565,7 @@ Nilai musuh ini 2x lebih tinggi dari planet (skor +2) karena lintasan sinusoidal
 
 ---
 
-### 7.8 Efek Ledakan (`explode.png`)
+### 11.8 Efek Ledakan (`explode.png`)
 
 ![Explode](assets/explode.png)
 
@@ -501,13 +579,12 @@ overlay_sprite(frame, self.explode_sprite, int(self.x) - offset, int(self.y) - o
 
 ---
 
-## 8. Demo Video
+## 12. Demo Video
 
-> Ganti tautan berikut dengan URL video demonstrasi yang telah diunggah ke YouTube atau platform lain.
 
 [Tonton Video Demonstrasi](https://youtu.be/LINK_VIDEO_DISINI)
 
-Video demonstrasi sebaiknya mencakup:
+Video demonstrasi mencakup:
 - Tampilan keseluruhan jendela game (tiga panel: game, kamera, mask)
 - Demonstrasi kontrol tangan kiri (1 jari kanan, 2 jari kiri)
 - Demonstrasi tiga level lompatan tangan kanan
@@ -517,44 +594,39 @@ Video demonstrasi sebaiknya mencakup:
 
 ---
 
-## 9. Struktur Direktori
-
+## 13. Struktur Direktori
+ 
 ```
-Astro-Dev Game/
-├── game.py                      # Satu-satunya file kode sumber (580+ baris)
+AstroDev-Game/
+├── game.py                      # Versi MORFOLOGI MANUAL (Python loop + NumPy)
+├── main.py                      # Versi MORFOLOGI BUILT-IN (cv2.erode/cv2.dilate)
 ├── README.md                    # Dokumen ini
 ├── assets/
-│   ├── welcome.png              # Layar welcome (1080x1080, pixel art + latar belakang)
-│   ├── background.png           # Latar belakang gameplay (pixel art landscape)
-│   ├── dev-stay.png             # Sprite karakter: idle + 4 kucing di kaki
-│   ├── dev-right.png            # Sprite karakter: bergerak kanan + 4 kucing melayang
-│   ├── dev-left.png             # Sprite karakter: bergerak kiri + 4 kucing melayang
-│   ├── planet.png               # Spritesheet 3x3: 9 varian planet/asteroid
-│   ├── alien.png                # Sprite musuh Glorb si alien kucing hijau
-│   ├── explode.png              # Sprite efek ledakan pixel art
-│   └── not-ok.wav               # Efek suara (diputar saat game dimulai, Windows only)
+│   ├── welcome.png              # Layar welcome (1080x1080, pixel art)
+│   ├── background.png           # Latar belakang gameplay (pixel art landscape, ~4.9 MB)
+│   ├── dev-stay.png             # Sprite karakter: idle + 4 kucing (~2.1 MB)
+│   ├── dev-right.png            # Sprite karakter: bergerak kanan (~2.1 MB)
+│   ├── dev-left.png             # Sprite karakter: bergerak kiri (~2.0 MB)
+│   ├── planet.png               # Spritesheet 3x3: 9 varian planet/asteroid (~1.3 MB)
+│   ├── alien.png                # Sprite musuh Glorb (~1.4 MB)
+│   ├── explode.png              # Sprite efek ledakan pixel art (~180 KB)
+│   └── not-ok.wav               # Efek suara (36 MB, Windows only)
 └── venv/
     └── Lib/site-packages/
         ├── cv2/                 # OpenCV 4.13.0.92
         └── numpy/               # NumPy 2.4.6
 ```
-
-**Ringkasan ukuran aset:**
-
-| File | Ukuran |
-|---|---|
-| not-ok.wav | 36 MB (audio WAV tidak terkompresi) |
-| background.png | 4,9 MB |
-| dev-right.png | 2,1 MB |
-| dev-left.png | 2,0 MB |
-| dev-stay.png | 2,1 MB |
-| welcome.png | 2,5 MB |
-| alien.png | 1,4 MB |
-| planet.png | 1,3 MB |
-| explode.png | 180 KB |
-
+ 
 ---
-
+ 
+## 14. Kesimpulan
+ 
+Proyek Astro-Dev berhasil mengimplementasikan sistem kontrol game berbasis gestur tangan secara menyeluruh dari primitif pengolahan citra. Pipeline lengkap dari piksel kamera mentah hingga aksi karakter di layar mencakup enam tahap utama: akuisisi dan preprocessing frame, segmentasi warna kulit di ruang HSV dengan dual-range mask, aplikasi morfologi matematis untuk pembersihan mask, pencarian dan isolasi kontur per zona tangan, penghitungan jari via analisis geometri convex hull dan convexity defects, dan terakhir pemetaan jumlah jari ke aksi karakter game.
+ 
+Kehadiran dua versi implementasi (`game.py` dengan morfologi manual dan `main.py` dengan morfologi built-in OpenCV) menjadikan proyek ini tidak sekadar game, melainkan platform perbandingan yang eksplisit antara implementasi algoritmik dari nol dan implementasi yang dioptimasi. Dari perbandingan ini, terlihat jelas bahwa pemahaman mendalam tentang cara kerja algoritma di level fundamental (seperti yang ditunjukkan oleh implementasi manual) memberikan dasar yang kuat untuk menggunakan dan menginterpretasikan fungsi-fungsi optimasi di library tanpa memperlakukannya sebagai kotak hitam.
+ 
+---
+ 
 ## Lisensi
-
-Proyek ini dibuat untuk keperluan akademis mata kuliah Pengolahan Citra dan Video, Institut Teknologi Sepuluh Nopember (ITS) Surabaya. Seluruh aset visual dirancang sendiri oleh pembuat.
+ 
+Proyek ini dibuat untuk keperluan akademis mata kuliah Pengolahan Citra dan Video, Institut Teknologi Sepuluh Nopember (ITS) Surabaya. Seluruh aset visual dirancang sendiri oleh pembuat. Repository tersedia di [github.com/deviputridev/AstroDev-Game](https://github.com/deviputridev/AstroDev-Game).

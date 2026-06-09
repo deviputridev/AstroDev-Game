@@ -174,8 +174,6 @@ def load_background(path):
     return cv2.resize(bg_bgr, (GAME_WIDTH, GAME_HEIGHT))
 
 
-# ===================== GAME OBJECTS =====================
-
 class Planet:
     def __init__(self, sprite_list, explode_sprite):
         self.sprite_list    = sprite_list
@@ -274,7 +272,6 @@ class FloatingText:
         return self.age >= self.lifetime
 
 
-# ===================== GAME STATE =====================
 
 class GameState:
     def __init__(self, sprites, planet_sprites, alien_sprite,
@@ -284,11 +281,12 @@ class GameState:
         self.alien_sprite   = alien_sprite
         self.explode_sprite = explode_sprite
         self.background     = background
+        self.char_w = self.sprites["stay"].shape[1]
         self.reset()
 
     def reset(self):
         char_h                    = self.sprites["stay"].shape[0]
-        self.x                    = float(GAME_WIDTH // 2 - CHAR_SCALE // 2)
+        self.x = float(max(0, min(GAME_WIDTH // 2 - self.char_w // 2, GAME_WIDTH - self.char_w)))
         self.y                    = float(GROUND_Y - char_h)
         self.vy                   = 0.0
         self.is_jumping           = False
@@ -311,7 +309,6 @@ class GameState:
         if self.game_over:
             return
 
-        # Tangan KIRI = jalan | 0 atau 5 = diam
         self.direction = "stay"
         if left_fingers == 1:
             self.x        += WALK_SPEED
@@ -320,12 +317,8 @@ class GameState:
             self.x        -= WALK_SPEED
             self.direction = "left"
 
-        if self.x > GAME_WIDTH:
-            self.x = float(-CHAR_SCALE)
-        elif self.x < -CHAR_SCALE:
-            self.x = float(GAME_WIDTH)
+        self.x = max(0.0, min(self.x, float(GAME_WIDTH - self.char_w)))
 
-        # Tangan KANAN = lompat | 0 atau 5 = tidak lompat
         if right_fingers in (1, 2, 3) and not self.is_jumping:
             self.vy         = JUMP_FORCE * right_fingers
             self.is_jumping = True
@@ -376,7 +369,7 @@ class GameState:
                 self.hearts -= 1
                 p.dead = True
                 continue
-            if self.is_jumping and check_collision(ax, ay, CHAR_SCALE, char_h,
+            if self.is_jumping and check_collision(ax, ay, self.char_w, char_h,
                                                    int(p.x), int(p.y), p.w, p.h):
                 self.score += 1
                 p.hit()
@@ -401,20 +394,17 @@ class GameState:
 
     def draw(self):
         frame = self.background.copy()
-        cv2.line(frame, (0, GROUND_Y), (GAME_WIDTH, GROUND_Y), (60, 40, 20), 2)
 
         for p in self.planets: p.draw(frame)
         for a in self.aliens:  a.draw(frame)
         overlay_sprite(frame, self.sprites[self.direction], int(self.x), int(self.y))
         for ft in self.float_texts: ft.draw(frame)
 
-        # HUD: hati
         for i in range(5):
             color = (0, 0, 220) if i < self.hearts else (100, 100, 100)
             cv2.circle(frame, (30 + i * 32, 30), 12, color, -1)
             cv2.circle(frame, (30 + i * 32, 30), 12, (200, 200, 200), 1)
 
-        # HUD: skor
         score_text = f"SCORE: {self.score}"
         (tw, _), _ = cv2.getTextSize(score_text, cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)
         cv2.putText(frame, score_text, (GAME_WIDTH - tw - 15, 35),
@@ -444,7 +434,6 @@ class GameState:
         return frame
 
 
-# ===================== LAYOUT BUILDER =====================
 
 def build_combined_display(game_frame, cam_view, mask_bgr):
     panel_h      = GAME_HEIGHT
@@ -465,7 +454,6 @@ def build_combined_display(game_frame, cam_view, mask_bgr):
     return np.hstack([game_frame, right_panel])
 
 
-# ===================== MAIN =====================
 
 def main():
     print("=== AstroDev Game ===")
@@ -473,7 +461,6 @@ def main():
     print("Tangan Kanan: 1/2/3=lompat  | 0/5=tidak lompat")
     print("Q=keluar | R=restart (saat game over)")
 
-    # Load welcome screen dari asset
     welcome_img = cv2.imread("assets/welcome.png")
     if welcome_img is None:
         raise FileNotFoundError("Aset tidak ditemukan: assets/welcome.png")
@@ -526,7 +513,6 @@ def main():
             state.update(left_fingers, right_fingers)
             game_frame = state.draw()
 
-        # ===== Tampilan Kamera =====
         cam_view = frame.copy()
         mask_bgr = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
 
