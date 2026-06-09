@@ -12,8 +12,6 @@
 ---
 
 ## Daftar Isi
-
-## Daftar Isi
  
 1. [Deskripsi Game](#1-deskripsi-game)
 2. [Latar Belakang dan Motivasi](#2-latar-belakang-dan-motivasi)
