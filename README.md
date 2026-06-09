@@ -2,6 +2,7 @@
 
 **Laporan Teknis dan Pedoman Penggunaan**
 
+|---|---|
 | **Nama** | Devi Putri Sekar Arum |
 | **NRP** | 5024241049 |
 | **Kelas** | Semester Genap 2025/2026 |
